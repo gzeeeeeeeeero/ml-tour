@@ -302,7 +302,15 @@ Using some features to make an indicator such as:
 
 ## <u>Feature Selection (Dimensionality Reduction)</u>
 
-*for finding correlations &| FS*
+
+
+**Filter Method**: In this method, features are dropped based on their relation to the output, or how they are **correlating** to the output
+
+**Wrapper Method**: We split our data into subsets and train a model using this. Based on the output of the model, we add and subtract features and train the model again
+
+**Intrinsic Method**: This method combines the qualities of both the Filter and Wrapper method to create the best subset
+
+*for finding correlations*
 
 ![](https://machinelearningmastery.com/wp-content/uploads/2019/11/How-to-Choose-Feature-Selection-Methods-For-Machine-Learning.png)
 
@@ -313,14 +321,6 @@ Using some features to make an indicator such as:
 - ANOVA correlation coefficient (linear)
 
 - Kendall’s rank coefficient (nonlinear)
-
-**Filter Method**: In this method, features are dropped based on their relation to the output
-
-**Wrapper Method**: We split our data into subsets and train a model using this. Based on the output of the model, we add and subtract features and train the model again
-
-Examples :
-
-- Forward Selection : We start with empty set and add feature one by one
 
 ### *Select Top X features [Univariate]*
 
@@ -346,6 +346,76 @@ clf = Pipeline([
 ])
 clf.fit(X, y)
 ```
+
+### *An [ExhaustiveFeatureSelector](http://rasbt.github.io/mlxtend/user_guide/feature_selection/ExhaustiveFeatureSelector/)*
+
+```python
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.datasets import load_iris
+from mlxtend.feature_selection import ExhaustiveFeatureSelector as EFS
+
+iris = load_iris()
+X = iris.data
+y = iris.target
+
+knn = KNeighborsClassifier(n_neighbors=3)
+
+efs1 = EFS(knn, 
+           min_features=1,
+           max_features=4,
+           scoring='accuracy',
+           print_progress=True,
+           cv=5)
+
+efs1 = efs1.fit(X, y)
+
+print('Best accuracy score: %.2f' % efs1.best_score_)
+print('Best subset (indices):', efs1.best_idx_)
+print('Best subset (corresponding names):', efs1.best_feature_names_)
+```
+
+```python
+Features: 15/15
+
+Best accuracy score: 0.97
+Best subset (indices): (0, 2, 3)
+Best subset (corresponding names): ('0', '2', '3')
+```
+
+### *A [SequentialFeatureSelector]([SequentialFeatureSelector: The popular forward and backward feature selection approaches incl. floating variants - mlxtend](http://rasbt.github.io/mlxtend/user_guide/feature_selection/SequentialFeatureSelector/)) [Greedy]*
+
+**Sequential Forward Selection (SFS)**
+
+1. Initialize with empty set and set a P-Value (5% for eg)
+
+2. Add a new feature; keep the feature if it maximized criterion function
+
+3. Repeat Until Convergeance (when reached max_features)
+
+```python
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.datasets import load_iris
+
+iris = load_iris()
+X = iris.data
+y = iris.target
+knn = KNeighborsClassifier(n_neighbors=4)
+
+
+from mlxtend.feature_selection import SequentialFeatureSelector as SFS
+
+sfs1 = SFS(knn, 
+           k_features=3, # max features
+           forward=True, 
+           floating=False, 
+           verbose=2,
+           scoring='accuracy',
+           cv=0)
+
+sfs1 = sfs1.fit(X, y)
+```
+
+**Sequential Backward Selection (SBS)** performs exclusions on full set of features
 
 ### *Dimentionality Reduction Techniques*
 
