@@ -83,7 +83,7 @@
     ![Probability Plot](/home/g0/Pictures/assets/download%20(1).png)
     the skewness is eliminated by taking log, in case the data have zeros then those zeros are ignored in log and a binary indicator variable column is added.
 
-- Homoscedasticity - Homoscedasticity refers to the "assumption that dependent variable(s) exhibit equal levels of variance across the range of predictor variable(s)" (Hair et al., 2013). Homoscedasticity is desirable because we want the error term to be the same across all values of the independent variables.
+- Homoscedasticity - Homoscedasticity refers to the "assumption that dependent variable(s) exhibit equal levels of variance across the range of predictor variable(s)" (Hair et al., 2013). Homoscedasticity is desirable because we want the error term to be the same across all values of the independent variables. we can check for Homoscedasticity with the Box's M statistic test which is implmeneted in [`scipy.stats.levene`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.levene.html) with a p value >0.05 we can assume Homoscedasticity is present
 
 - Linearity- The most common way to assess linearity is to examine scatter plots and search for linear patterns. If patterns are not linear, it would be worthwhile to explore data transformations.
 
@@ -93,7 +93,7 @@
   For more information search 
   - EDA on google
   - EDA notebooks on kaggle
-  - Hair et al., 2013) 
+  - Hair et al., (2013) 
   ```
 
 ---
@@ -240,6 +240,22 @@ df = OneHotEncoder(categories=cat_cols|'auto'[default]).fit_transform(df)
 
 LabelEncoding (not suitable for some ML models)
 
+### *Dealing with Imbalances*
+
+to create sample imbalanced data :
+
+```python
+!pip install imblearn # a scikit-learn lib for imbalanced learning
+
+from imblearn.datasets import make_imbalance
+
+df_res, y_res = make_imbalance(df, y, sampling_strategy={class_label: class_count ....},)
+```
+
+- collect more data of minority (if u can)
+
+- pending ...
+
 ### *Scaling the Data*
 
 Required when data is on different scales, smthn is 1-5 smthn is 1-200000. A [`StandardScaler`](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.StandardScaler.html#sklearn.preprocessing.StandardScaler "sklearn.preprocessing.StandardScaler") can be used generally but a [`MaxAbsScaler`](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.MaxAbsScaler.html#sklearn.preprocessing.MaxAbsScaler "sklearn.preprocessing.MaxAbsScaler") is used in case of sparse data, [`RobustScaler`](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.RobustScaler.html#sklearn.preprocessing.RobustScaler "sklearn.preprocessing.RobustScaler") is used in case of Outliers; [`MinMaxScaler`](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.MinMaxScaler.html#sklearn.preprocessing.MinMaxScaler "sklearn.preprocessing.MinMaxScaler") and [`MaxAbsScaler`](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.MaxAbsScaler.html#sklearn.preprocessing.MaxAbsScaler "sklearn.preprocessing.MaxAbsScaler") can fit data into a range as well, with `feature_range=(min, max)`
@@ -302,11 +318,9 @@ Using some features to make an indicator such as:
 
 ## <u>Feature Selection (Dimensionality Reduction)</u>
 
-
-
 **Filter Method**: In this method, features are dropped based on their relation to the output, or how they are **correlating** to the output
 
-**Wrapper Method**: We split our data into subsets and train a model using this. Based on the output of the model, we add and subtract features and train the model again
+**Wrapper Method**: We split our data into subsets and train a model using this. Based on the output of the model, we add and subtract features and train the model again. In the core a machine learning algorithm is used to give weights to features unlike filter methods. This is achieved by fitting the given machine learning algorithm used in the core of the model, ranking features by importance, discarding the least important features, and re-fitting the model. This process is repeated until a specified number of features remains
 
 **Intrinsic Method**: This method combines the qualities of both the Filter and Wrapper method to create the best subset
 
@@ -419,14 +433,180 @@ sfs1 = sfs1.fit(X, y)
 
 ### *Dimentionality Reduction Techniques*
 
+#### PCA
 
+PCA works by projecting data into a lower dimensional space that captures the most variance using principal components which are orthogonal vectors, the 1<sup>st</sup> PC have most variance compared to any vector in the vector space of features, the second PC have 2<sup>nd</sup> highest variance.
+
+<img src="https://assets.website-files.com/5e6f9b297ef3941db2593ba1/5f76ef7799e20652be0d79f6_Screenshot%202020-10-02%20at%2011.12.32.png" title="" alt="" width="251">
+
+There are many mathematical ways to calculate/implement PCA, [`sklearn.decomposition`](https://scikit-learn.org/stable/modules/classes.html#module-sklearn.decomposition "sklearn.decomposition").[`PCA`](https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html#) automatically selects the svd solver depending upon data
+
+Demo :
+
+```python
+from sklearn.decomposition import PCA
+# PCA is sensitive to scaling (perform Standard Scaling first)
+X = StandardScaler().fit_transform(X)
+pca = PCA().fit(X) # by default n_components=None which makes n_components = n_features
+
+>>> with printoptions(precision=4, suppress=True):
+...:     print(pca.explained_variance_ratio_.cumsum()*100)
+[ 43.3817  62.9563  72.4801  79.1868  84.4887  88.5793  90.8581  92.5663
+  93.9582  95.1609  96.1642  97.016   97.8511  98.3379  98.6483  98.8999
+  99.1016  99.2811  99.4458  99.5569  99.6585  99.7498  99.8324  99.8892
+  99.9417  99.9686  99.9917  99.997   99.9996 100.    ]
+# this shows that first 10 components capture 95% Variance in Data
+covariance
+>>> pca.components_.shape
+(30, 30)
+
+X_scaled = StandardScaler().fit_transform(X)
+pca = PCA(n_components=0.95).fit(X_scaled)
+>>> pca.n_components_
+10
+
+X_scaled_pca = pca.transform(X_scaled)
+xt, xv, yt, yv = train_test_split(X_scaled_pca, y)
+>>> print(classification_report(SVC().fit(xt, yt).predict(xv), yv)
+              precision    recall  f1-score   support
+
+           0       0.96      0.96      0.96        53
+           1       0.97      0.97      0.97        65
+
+    accuracy                           0.97       118
+   macro avg       0.97      0.97      0.97       118
+weighted avg       0.97      0.97      0.97       118
+```
+
+to deduce which are the most important features in the components. since **each component is some linear combination of all the features** it doesnt matter how many components we initialize `PCA` with each component still shows importance of all the features
+
+![](/home/g0/.config/marktext/images/2022-08-12-23-04-34-image.png)
+
+printing top 4 features in 6 components
+
+```python
+pca = PCA(n_components=6).fit(X_scaled)
+>>> pca.explained_variance_ratio_.cumsum()[-1]*100
+88.57927184093991
+
+>>> cols = load_breast_cancer(as_frame=True).data.columns
+       ...: all_feat = []
+       ...: for i, comp in enumerate(pca.components_):
+       ...:     print(f"===== Component - {i+1} ======")
+       ...:     top_4 = cols[argpartition(comp, 4)[:4]].to_list()
+       ...:     print(top_4)
+       ...:     all_feat+=top_4
+       ...: print("\n===== Unique Features =====")
+       ...: print(set(all_feat), f"\nTotal - {len(set(all_feat))}")
+
+===== Component - 1 ======
+['smoothness error', 'texture error', 'symmetry error', 'mean fractal dimension']
+===== Component - 2 ======
+['mean radius', 'mean area', 'worst area', 'worst radius']
+===== Component - 3 ======
+['worst symmetry', 'worst smoothness', 'worst compactness', 'worst fractal dimension']
+===== Component - 4 ======
+['mean smoothness', 'area error', 'radius error', 'perimeter error']
+===== Component - 5 ======
+['mean smoothness', 'worst smoothness', 'mean symmetry', 'symmetry error']
+===== Component - 6 ======
+['mean smoothness', 'smoothness error', 'worst smoothness', 'mean fractal dimension']
+
+===== Unique Features =====
+{'symmetry error', 'worst smoothness', 'worst fractal dimension', 'perimeter error', 
+'mean radius', 'smoothness error', 'mean smoothness', 'worst compactness', 
+'mean fractal dimension', 'worst symmetry', 'area error', 'mean symmetry', 
+'radius error', 'worst area', 'texture error', 'worst radius', 'mean area'} 
+Total - 17
+```
+
+#### LDA
+
+LDA works by finding vectors that give the most seperability in the datapoints it is a **supervised** classification algorithm, it does so by maximizing the seperation of means of data clusters and It minimizes the variation or scatter within each category represented by s², it can be used for dimensionality reduction by projecting the data along vectors that are normal to the seperating vectors
+
+<img src="file:///home/g0/Pictures/assets/lda.png" title="" alt="" width="1072">
+
+Assumptions of LDA for best performance :
+
+1. Normality
+
+2. Homoscedasticity : If this fails then we use Quadratic Discriminant Analysis aka Gaussian Discriminant Analysis
+
+3. Multicollinearity : The performance of prediction can decrease with the increased correlation between the independent variables.
+
+LDA tends to overfit rapidly especially when these assumptions are broken, sometimes it makes sense to apply PCA before LDA as a regularizer
+
+![](https://i.stack.imgur.com/Gv4n7.png)
+
+Although this is a possible strategy still it is adviced to use rLDA
+
+#### Kernel PCA (Non-Linear)
+
+Kernel PCA is an extension of [PCA](https://ml-explained.com/blog/principal-component-analysis-explained) that allows for the separability of nonlinear data by making use of kernels. The basic idea behind it is to project the linearly inseparable data onto a higher dimensional space where it becomes linearly separable. RBF is a general purpose kernel, cross-validation currently is the only good way to figure which kernel is best, for eg if data looks like it follows a polynomial function use poly kernel
+
+#### t-SNE
+
+t-SNE (tees-knee) (t-Distributed Stochastic Neighbor Embedding) is a dim red tech used for visualizing very high dimensional data in 2d or 3d, like images, audio, words etc generally when d > 50. It is an iterative unsupervised algorithm that makes clusters of similar datapoints. [more information](https://towardsdatascience.com/t-sne-clearly-explained-d84c537f53a), [visualisation, experiments and tips to use it efficiently]([How to Use t-SNE Effectively](https://distill.pub/2016/misread-tsne/)), [visualization of t-SNE on clustering similar words together](http://projector.tensorflow.org/)
+
+> t-SNE [1] is a tool to visualize high-dimensional data. It converts similarities between data points to joint probabilities and tries to minimize the Kullback-Leibler divergence between the joint probabilities of the low-dimensional embedding and the high-dimensional data.
+
+which also means that t-SNE does not retain/care-about the size, density and distance of clusters, it retains probabilities/neighbours which means running a distance/density based clustering algorithm such as [DBSCAN](https://www.kdnuggets.com/2020/04/dbscan-clustering-algorithm-machine-learning.html) on its output might not be a good idea; the perplexity hyperparameter of t-SNE is comparable to the nearest neighbours of KNN
+
+> In contrast to, e.g., PCA, t-SNE has a non-convex objective function. The objective function is minimized using a gradient descent optimization that is initiated randomly. As a result, it is possible that different runs give you different solutions. Notice that it is perfectly fine to run t-SNE a number of times (with the same data and parameters), and to select the visualization with the lowest value of the objective function as your final visualization.
+
+> finds patterns in the data by identifying observed clusters based on similarity of data points with multiple features. But it is not a clustering algorithm it is a dimensionality reduction algorithm. This is because it maps the multi-dimensional data to a lower dimensional space, the input features are no longer identifiable. Thus you cannot make any inference based only on the output of t-SNE. So essentially it is mainly a data exploration and visualization technique.
+> 
+> But t-SNE can be used in the process of classification and clustering by using its output as the input feature for other classification algorithms.
+
+Cluster sizes in any t-SNE plot must not be evaluated for standard deviation, dispersion or any other similar measures. This is because t-SNE expands denser clusters and contracts sparser clusters to even out cluster sizes. This is one of the reasons for the crisp and clear plots it produces.
+
+[video walkthrough](https://www.youtube.com/watch?v=NEaUSP4YerM).
+
+[why clustering on t-SNE's output is not always a good idea]((https://stats.stackexchange.com/questions/263539/clustering-on-the-output-of-t-sne).
+
+### *Removing Multicolinearity*
+
+Colinearity is the state where two variables are highly correlated and contain similiar information about the variance within a given dataset. To detect colinearity among variables, simply create a correlation matrix and find variables with large absolute values. In R use the [`corr`](http://www.sthda.com/english/wiki/correlation-matrix-a-quick-start-guide-to-analyze-format-and-visualize-a-correlation-matrix-using-r-software) function and in python this can by accomplished by using numpy's [`corrcoef`](https://docs.scipy.org/doc/numpy/reference/generated/numpy.corrcoef.html) function.
+
+[Multicolinearity](https://en.wikipedia.org/wiki/Multicollinearity) on the other hand is more troublesome to detect because it emerges when three or more variables, which are highly correlated, are included within a model. To make matters worst multicolinearity can emerge even when isolated pairs of variables are not colinear.
+
+**Steps for Implementing VIF**
+
+1. Run a multiple regression.
+2. Calculate the VIF factors.
+3. Inspect the factors for each predictor variable, if the VIF is between 5-10, multicolinearity is likely present and you should consider dropping the variable.
+
+```python
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+from statsmodels.tools.tools import add_constant
+
+df = pd.DataFrame(
+    {'a': [1, 1, 2, 3, 4],
+     'b': [2, 2, 3, 2, 1],
+     'c': [4, 6, 7, 8, 9],
+     'd': [4, 3, 4, 5, 4]}
+)
+
+X = add_constant(df)
+>>> pd.Series([variance_inflation_factor(X.values, i) 
+               for i in range(X.shape[1])], 
+              index=X.columns)
+const    136.875
+a         22.950
+b          3.000
+c         12.950
+d          3.000
+dtype: float64
+```
 
 ### *Removing features with low variance*
+
+cheap way when u know the data strictly follows a distribution and u can use the variance formula
 
 ```python
 >>> from sklearn.feature_selection import VarianceThreshold
 >>> X = [[0, 0, 1], [0, 1, 0], [1, 0, 0], [0, 1, 1], [0, 1, 0], [0, 1, 1]]
->>> sel = VarianceThreshold(threshold=(.8 * (1 - .8)))
+>>> sel = VarianceThreshold(threshold=(.8 * (1 - .8))) # this is variance of bernoulli dist
 >>> sel.fit_transform(X)
 array([[0, 1],
        [1, 0],
@@ -436,10 +616,22 @@ array([[0, 1],
        [1, 1]])
 ```
 
-3. ### Model Selection
+## Data Splitting
 
-4. ### Fitting
+Train Set : 70-80% data, model trained on this
 
-5. ### Hyperparameter Tuning : Can be Implemented with `GridSearchCV` of `sklearn.model_selection` as follows
+Val Set : 10-15% data, hyperparameters tuned on this
+
+Test Set : 10-15% data, model test on this
+
+More on [Cross Validation](Cross Validation Techniques.md)
+
+## Model Selection
+
+
+
+3. ### Fitting
+
+4. ### Hyperparameter Tuning : Can be Implemented with `GridSearchCV` of `sklearn.model_selection` as follows tuning HPs in Pipeline
    
-   Metrics - Model Eval, roc_auc
+   Metrics - Model Eval, roc_auc, classif_report
