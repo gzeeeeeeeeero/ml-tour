@@ -628,7 +628,11 @@ More on [Cross Validation](Cross Validation Techniques.md)
 
 ## Model Selection
 
+Bias-Variance Trade-Off
 
+difference between bias and variance
+
+![](/home/g0/Pictures/assets/selection.png)
 
 3. ### Fitting
 
